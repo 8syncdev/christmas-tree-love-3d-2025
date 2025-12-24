@@ -810,15 +810,14 @@
             
             console.log(`  -> Texture created from base64 image`);
 
-            // 1. TẤM NỀN ĐEN (Chặn ánh sáng neon xuyên qua ảnh)
+            // 1. TẤM NỀN ĐEN (LÕI GIỮA) - Chặn ánh sáng neon xuyên qua
             const backGeo = new THREE.PlaneGeometry(finalWidth - 0.05, finalHeight - 0.05);
-            const backMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+            const backMat = new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.DoubleSide });
             const backPlane = new THREE.Mesh(backGeo, backMat);
-            backPlane.position.z = 0.02; // Nằm giữa khung và ảnh
+            backPlane.position.z = 0; // Nằm chính giữa
             photoContainer.add(backPlane);
 
             // 2. KHUNG NEON (Viền ngoài Glow)
-            // Làm rộng hơn chút để tách biệt với ảnh
             const frameGeo = new THREE.PlaneGeometry(finalWidth + 0.15, finalHeight + 0.15);
             const frameMat = new THREE.MeshBasicMaterial({
                 color: 0xffd700, // Gold
@@ -828,29 +827,35 @@
                 blending: THREE.AdditiveBlending
             });
             const frame = new THREE.Mesh(frameGeo, frameMat);
-            frame.position.z = 0; // Nằm sau cùng
+            frame.position.z = 0; 
             photoContainer.add(frame);
 
-            // 3. VIỀN TRONG (Sắc nét - Tách ảnh và Glow)
+            // 3. VIỀN TRONG (Sắc nét)
             const borderGeo = new THREE.PlaneGeometry(finalWidth + 0.02, finalHeight + 0.02);
             const borderMat = new THREE.MeshBasicMaterial({
                 color: 0xffffff, 
                 side: THREE.DoubleSide
             });
             const border = new THREE.Mesh(borderGeo, borderMat);
-            border.position.z = 0.01;
+            border.position.z = 0;
             photoContainer.add(border);
 
-            // 4. ẢNH CHÍNH (Nổi lên phía trước hẳn)
+            // 4. ẢNH MẶT TRƯỚC
             const photoGeo = new THREE.PlaneGeometry(finalWidth, finalHeight);
             const photoMat = new THREE.MeshBasicMaterial({
                 map: texture,
-                side: THREE.DoubleSide,
+                side: THREE.FrontSide, // Chỉ hiện mặt trước
                 color: 0xffffff
             });
-            const photo = new THREE.Mesh(photoGeo, photoMat);
-            photo.position.z = 0.05; // Đẩy ra xa nhất để không bị ám màu glow
-            photoContainer.add(photo);
+            const photoFront = new THREE.Mesh(photoGeo, photoMat);
+            photoFront.position.z = 0.04; // Nổi lên trước
+            photoContainer.add(photoFront);
+
+            // 5. ẢNH MẶT SAU (Cho phép nhìn 2 mặt)
+            const photoBack = new THREE.Mesh(photoGeo, photoMat);
+            photoBack.position.z = -0.04; // Nổi ra sau
+            photoBack.rotation.y = Math.PI; // Xoay ngược lại để hình đúng chiều
+            photoContainer.add(photoBack);
 
             orbitGroup.add(photoContainer);
             // Lưu trữ vị trí ban đầu (Orbit) và vị trí Flow (sẽ tính sau)
