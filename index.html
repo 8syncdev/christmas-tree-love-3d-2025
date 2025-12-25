@@ -463,6 +463,7 @@
         import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
         import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
         import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+        import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 
         // ==========================================
         // CẤU HÌNH: DÙNG BASE64 ẢNH (embedded_images.js)
@@ -536,6 +537,113 @@
             await initThreeJS();
         })();
 
+        // ==========================================
+        // EASING FUNCTIONS (Animation Utilities)
+        // ==========================================
+        const Easing = {
+            // Power-based easing
+            easeInQuad: t => t * t,
+            easeOutQuad: t => t * (2 - t),
+            easeInOutQuad: t => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t,
+
+            easeInCubic: t => t * t * t,
+            easeOutCubic: t => (--t) * t * t + 1,
+            easeInOutCubic: t => t < 0.5 ? 4 * t * t * t : (t - 1) * (2 * t - 2) * (2 * t - 2) + 1,
+
+            easeInQuart: t => t * t * t * t,
+            easeOutQuart: t => 1 - (--t) * t * t * t,
+            easeInOutQuart: t => t < 0.5 ? 8 * t * t * t * t : 1 - 8 * (--t) * t * t * t,
+
+            easeInQuint: t => t * t * t * t * t,
+            easeOutQuint: t => 1 + (--t) * t * t * t * t,
+            easeInOutQuint: t => t < 0.5 ? 16 * t * t * t * t * t : 1 + 16 * (--t) * t * t * t * t,
+
+            // Exponential easing
+            easeInExpo: t => t === 0 ? 0 : Math.pow(2, 10 * (t - 1)),
+            easeOutExpo: t => t === 1 ? 1 : 1 - Math.pow(2, -10 * t),
+            easeInOutExpo: t => {
+                if (t === 0 || t === 1) return t;
+                return t < 0.5
+                    ? Math.pow(2, 20 * t - 10) / 2
+                    : (2 - Math.pow(2, -20 * t + 10)) / 2;
+            },
+
+            // Sine easing
+            easeInSine: t => 1 - Math.cos(t * Math.PI / 2),
+            easeOutSine: t => Math.sin(t * Math.PI / 2),
+            easeInOutSine: t => -(Math.cos(Math.PI * t) - 1) / 2,
+
+            // Circular easing
+            easeInCirc: t => 1 - Math.sqrt(1 - t * t),
+            easeOutCirc: t => Math.sqrt(1 - (--t) * t),
+            easeInOutCirc: t => {
+                return t < 0.5
+                    ? (1 - Math.sqrt(1 - 4 * t * t)) / 2
+                    : (Math.sqrt(1 - Math.pow(-2 * t + 2, 2)) + 1) / 2;
+            },
+
+            // Back easing (overshoot)
+            easeInBack: t => {
+                const c1 = 1.70158;
+                const c3 = c1 + 1;
+                return c3 * t * t * t - c1 * t * t;
+            },
+            easeOutBack: t => {
+                const c1 = 1.70158;
+                const c3 = c1 + 1;
+                return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+            },
+            easeInOutBack: t => {
+                const c1 = 1.70158;
+                const c2 = c1 * 1.525;
+                return t < 0.5
+                    ? (Math.pow(2 * t, 2) * ((c2 + 1) * 2 * t - c2)) / 2
+                    : (Math.pow(2 * t - 2, 2) * ((c2 + 1) * (t * 2 - 2) + c2) + 2) / 2;
+            },
+
+            // Elastic easing (spring-like)
+            easeInElastic: t => {
+                if (t === 0 || t === 1) return t;
+                return -Math.pow(2, 10 * t - 10) * Math.sin((t * 10 - 10.75) * ((2 * Math.PI) / 3));
+            },
+            easeOutElastic: t => {
+                if (t === 0 || t === 1) return t;
+                return Math.pow(2, -10 * t) * Math.sin((t * 10 - 0.75) * ((2 * Math.PI) / 3)) + 1;
+            },
+            easeInOutElastic: t => {
+                if (t === 0 || t === 1) return t;
+                return t < 0.5
+                    ? -(Math.pow(2, 20 * t - 10) * Math.sin((20 * t - 11.125) * ((2 * Math.PI) / 4.5))) / 2
+                    : (Math.pow(2, -20 * t + 10) * Math.sin((20 * t - 11.125) * ((2 * Math.PI) / 4.5))) / 2 + 1;
+            },
+
+            // Bounce easing
+            easeInBounce: t => 1 - Easing.easeOutBounce(1 - t),
+            easeOutBounce: t => {
+                const n1 = 7.5625;
+                const d1 = 2.75;
+                if (t < 1 / d1) {
+                    return n1 * t * t;
+                } else if (t < 2 / d1) {
+                    return n1 * (t -= 1.5 / d1) * t + 0.75;
+                } else if (t < 2.5 / d1) {
+                    return n1 * (t -= 2.25 / d1) * t + 0.9375;
+                } else {
+                    return n1 * (t -= 2.625 / d1) * t + 0.984375;
+                }
+            },
+            easeInOutBounce: t => t < 0.5
+                ? (1 - Easing.easeOutBounce(1 - 2 * t)) / 2
+                : (1 + Easing.easeOutBounce(2 * t - 1)) / 2,
+
+            // Smooth step (Hermite interpolation)
+            smoothStep: t => t * t * (3 - 2 * t),
+            smootherStep: t => t * t * t * (t * (t * 6 - 15) + 10),
+
+            // Linear
+            linear: t => t
+        };
+
         async function initThreeJS() {
 
         // ==========================================
@@ -551,45 +659,284 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        renderer.toneMappingExposure = 1.2;
+        renderer.toneMappingExposure = 1.2; // Giống gốc
         document.getElementById('canvas-container').appendChild(renderer.domElement);
 
-        // --- HỆ THỐNG POST PROCESSING (Cinematic Bloom) ---
+        // --- HỆ THỐNG POST PROCESSING (Giống gốc - ảnh có glow) ---
         const renderScene = new RenderPass(scene, camera);
-        // Tinh chỉnh Bloom để ảnh không bị chói, chỉ viền và đèn phát sáng
+        // Bloom GIỐNG GỐC - ảnh sẽ phát sáng
         const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
-        bloomPass.threshold = 0.15; // Tăng ngưỡng để ảnh tối không bị glow
-        bloomPass.strength = 0.6;   // Giảm độ mạnh bloom (vừa phải, lãng mạn)
-        bloomPass.radius = 0.5;     // Bán kính lan tỏa mềm mại
+        bloomPass.threshold = 0.15; // Giống gốc
+        bloomPass.strength = 0.6;    // Giống gốc
+        bloomPass.radius = 0.5;      // Giống gốc
 
         const composer = new EffectComposer(renderer);
         composer.addPass(renderScene);
         composer.addPass(bloomPass);
 
-        // --- MÔI TRƯỜNG & ÁNH SÁNG (Cinematic Lighting) ---
-        // Sương mù (Fog) tạo chiều sâu không gian
-        scene.fog = new THREE.FogExp2(0x050210, 0.015); // Màu tím than huyền bí
+        // --- CHROMATIC ABERRATION PASS (Rất nhẹ - không affect ảnh) ---
+        const ChromaticAberrationShader = {
+            uniforms: {
+                'tDiffuse': { value: null },
+                'amount': { value: 0.0003 }, // Giảm 85% - gần như không thấy
+                'time': { value: 0 }
+            },
+            vertexShader: `
+                varying vec2 vUv;
+                void main() {
+                    vUv = uv;
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }
+            `,
+            fragmentShader: `
+                uniform sampler2D tDiffuse;
+                uniform float amount;
+                uniform float time;
+                varying vec2 vUv;
 
-        // Ánh sáng môi trường nhẹ
-        const ambientLight = new THREE.HemisphereLight(0xff00cc, 0x0000ff, 0.3); // Mix hồng/xanh
+                void main() {
+                    vec2 uv = vUv;
+
+                    // Chromatic aberration rất nhẹ
+                    float aberration = amount * (1.0 + sin(time * 0.3) * 0.2);
+
+                    // RGB channel separation - minimal
+                    float r = texture2D(tDiffuse, uv + vec2(aberration, 0.0)).r;
+                    float g = texture2D(tDiffuse, uv).g;
+                    float b = texture2D(tDiffuse, uv - vec2(aberration, 0.0)).b;
+
+                    gl_FragColor = vec4(r, g, b, 1.0);
+                }
+            `
+        };
+
+        const chromaticAberrationPass = new ShaderPass(ChromaticAberrationShader);
+        composer.addPass(chromaticAberrationPass);
+
+        // --- VIGNETTE & FILM GRAIN PASS ---
+        const FilmGrainShader = {
+            uniforms: {
+                'tDiffuse': { value: null },
+                'time': { value: 0 },
+                'grainIntensity': { value: 0.02 },
+                'vignetteIntensity': { value: 0.12 }
+            },
+            vertexShader: `
+                varying vec2 vUv;
+                void main() {
+                    vUv = uv;
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }
+            `,
+            fragmentShader: `
+                uniform sampler2D tDiffuse;
+                uniform float time;
+                uniform float grainIntensity;
+                uniform float vignetteIntensity;
+                varying vec2 vUv;
+
+                // Pseudo-random noise
+                float random(vec2 co) {
+                    return fract(sin(dot(co.xy, vec2(12.9898, 78.233))) * 43758.5453);
+                }
+
+                void main() {
+                    vec2 uv = vUv;
+
+                    // Film grain - nhẹ
+                    float grain = random(uv + fract(time)) * grainIntensity;
+                    grain -= grainIntensity * 0.5;
+
+                    // Vignette effect - subtle
+                    vec2 center = vec2(0.5, 0.5);
+                    float dist = length(uv - center);
+                    float vignette = 1.0 - smoothstep(0.25, 0.85, dist) * vignetteIntensity;
+
+                    // Apply effects
+                    vec4 color = texture2D(tDiffuse, uv);
+                    color.rgb += grain;
+                    color.rgb *= vignette;
+
+                    // Subtle warm color grading - không tăng brightness
+                    color.r += 0.01;
+
+                    gl_FragColor = color;
+                }
+            `
+        };
+
+        const filmGrainPass = new ShaderPass(FilmGrainShader);
+        composer.addPass(filmGrainPass);
+
+        // --- MÔI TRƯỜNG & ÁNH SÁNG (Warm Romantic Lighting) ---
+        // Sương mù ấm áp - độ sâu vừa phải
+        scene.fog = new THREE.FogExp2(0x1a0a1e, 0.007); // Tím ấm, trung bình
+
+        // Ánh sáng môi trường ấm áp - tinh tế
+        const ambientLight = new THREE.HemisphereLight(0xff9eb5, 0x3a0a3e, 0.45); // Hồng nhạt + tím đậm, moderate intensity
         scene.add(ambientLight);
+
+        // --- VOLUMETRIC LIGHT RAYS (God Rays from Tree) ---
+        // Tạo volumetric light rays tỏa ra từ cây thông
+        const godRayCount = 12;
+        const godRays = [];
+
+        for (let i = 0; i < godRayCount; i++) {
+            const angle = (i / godRayCount) * Math.PI * 2;
+
+            // Shader material cho light rays
+            const rayGeo = new THREE.PlaneGeometry(0.5, 20);
+            const rayMat = new THREE.ShaderMaterial({
+                uniforms: {
+                    time: { value: 0 },
+                    angle: { value: angle },
+                    opacity: { value: 0.15 + Math.random() * 0.1 }
+                },
+                vertexShader: `
+                    varying vec2 vUv;
+                    uniform float time;
+                    uniform float angle;
+
+                    void main() {
+                        vUv = uv;
+                        vec3 pos = position;
+
+                        // Slight wave animation
+                        pos.x += sin(time * 0.5 + pos.y * 0.2) * 0.2;
+
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+                    }
+                `,
+                fragmentShader: `
+                    uniform float time;
+                    uniform float angle;
+                    uniform float opacity;
+                    varying vec2 vUv;
+
+                    void main() {
+                        // Gradient fade from bottom to top
+                        float fade = 1.0 - vUv.y;
+                        fade = pow(fade, 1.5);
+
+                        // Horizontal fade (thinner at edges)
+                        float hFade = 1.0 - abs(vUv.x - 0.5) * 2.0;
+                        hFade = pow(hFade, 2.0);
+
+                        // Pulsing animation softer
+                        float pulse = sin(time * 0.6 + angle) * 0.15 + 0.85;
+
+                        // WARM romantic colors: pink/gold mix
+                        vec3 color = mix(
+                            vec3(1.0, 0.4, 0.7),  // Romantic Pink
+                            vec3(1.0, 0.85, 0.4),  // Warm Gold
+                            0.6
+                        );
+
+                        float finalAlpha = fade * hFade * opacity * pulse * 0.7; // Giảm độ sáng
+
+                        gl_FragColor = vec4(color, finalAlpha);
+                    }
+                `,
+                transparent: true,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false,
+                side: THREE.DoubleSide
+            });
+
+            const ray = new THREE.Mesh(rayGeo, rayMat);
+            ray.position.y = 5;
+            ray.rotation.y = angle;
+            ray.position.x = Math.cos(angle) * 2;
+            ray.position.z = Math.sin(angle) * 2;
+
+            godRays.push({ mesh: ray, baseAngle: angle, speed: 0.1 + Math.random() * 0.1 });
+            scene.add(ray);
+        }
+
+        // --- ATMOSPHERIC FLOATING PARTICLES (Space Dust) ---
+        const dustCount = 500;
+        const dustGeo = new THREE.BufferGeometry();
+        const dustPos = new Float32Array(dustCount * 3);
+        const dustSizes = new Float32Array(dustCount);
+        const dustOpacities = new Float32Array(dustCount);
+
+        for (let i = 0; i < dustCount; i++) {
+            const radius = 15 + Math.random() * 40;
+            const theta = Math.random() * Math.PI * 2;
+            const phi = Math.random() * Math.PI;
+
+            dustPos[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
+            dustPos[i * 3 + 1] = radius * Math.cos(phi);
+            dustPos[i * 3 + 2] = radius * Math.sin(phi) * Math.sin(theta);
+
+            dustSizes[i] = Math.random() * 2 + 0.5;
+            dustOpacities[i] = Math.random() * 0.3 + 0.1;
+        }
+
+        dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPos, 3));
+        dustGeo.setAttribute('size', new THREE.BufferAttribute(dustSizes, 1));
+        dustGeo.setAttribute('opacity', new THREE.BufferAttribute(dustOpacities, 1));
+
+        const dustMat = new THREE.ShaderMaterial({
+            uniforms: { time: { value: 0 } },
+            vertexShader: `
+                attribute float size;
+                attribute float opacity;
+                varying float vOpacity;
+                uniform float time;
+
+                void main() {
+                    vOpacity = opacity;
+                    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+                    gl_Position = projectionMatrix * mvPosition;
+                    gl_PointSize = size * (200.0 / -mvPosition.z);
+                }
+            `,
+            fragmentShader: `
+                varying float vOpacity;
+                void main() {
+                    vec2 coord = gl_PointCoord - vec2(0.5);
+                    float dist = length(coord);
+                    if (dist > 0.5) discard;
+
+                    float strength = 1.0 - (dist * 2.0);
+                    strength = pow(strength, 2.0);
+
+                    // Warm dust color: pinkish gold
+                    vec3 color = vec3(1.0, 0.9, 0.85);
+
+                    gl_FragColor = vec4(color, vOpacity * strength * 0.6);
+                }
+            `,
+            transparent: true,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+        });
+
+        const dustSystem = new THREE.Points(dustGeo, dustMat);
+        scene.add(dustSystem);
 
         const controls = new OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
         controls.dampingFactor = 0.05;
         controls.autoRotate = true;
         controls.autoRotateSpeed = 0.5;
-        controls.minDistance = 10;
-        controls.maxDistance = 50;
+        controls.minDistance = 5;
+        controls.maxDistance = 60;
 
-        // --- NỀN TINH VÂN (NEBULA) ---
+        // --- NỀN TINH VÂN (NEBULA) - ENHANCED với multi-layer depth ---
         const nebulaVertexShader = `
             varying vec2 vUv;
             varying vec3 vPosition;
+            varying vec3 vWorldPosition;
+            uniform float time;
+
             void main() {
                 vUv = uv;
                 vPosition = position;
-                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+                vWorldPosition = worldPosition.xyz;
+                gl_Position = projectionMatrix * viewMatrix * worldPosition;
             }
         `;
 
@@ -597,37 +944,125 @@
             uniform float time;
             varying vec2 vUv;
             varying vec3 vPosition;
+            varying vec3 vWorldPosition;
 
-            float random (in vec2 st) {
-                return fract(sin(dot(st.xy, vec2(12.9898,78.233))) * 43758.5453123);
+            // Simplex noise functions cho clouds tự nhiên
+            vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+            vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+            vec4 permute(vec4 x) { return mod289(((x*34.0)+1.0)*x); }
+            vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
+
+            float snoise(vec3 v) {
+                const vec2 C = vec2(1.0/6.0, 1.0/3.0);
+                const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
+                vec3 i  = floor(v + dot(v, C.yyy));
+                vec3 x0 = v - i + dot(i, C.xxx);
+                vec3 g = step(x0.yzx, x0.xyz);
+                vec3 l = 1.0 - g;
+                vec3 i1 = min(g.xyz, l.zxy);
+                vec3 i2 = max(g.xyz, l.zxy);
+                vec3 x1 = x0 - i1 + C.xxx;
+                vec3 x2 = x0 - i2 + C.yyy;
+                vec3 x3 = x0 - D.yyy;
+                i = mod289(i);
+                vec4 p = permute(permute(permute(
+                        i.z + vec4(0.0, i1.z, i2.z, 1.0))
+                        + i.y + vec4(0.0, i1.y, i2.y, 1.0))
+                        + i.x + vec4(0.0, i1.x, i2.x, 1.0));
+                float n_ = 0.142857142857;
+                vec3 ns = n_ * D.wyz - D.xzx;
+                vec4 j = p - 49.0 * floor(p * ns.z * ns.z);
+                vec4 x_ = floor(j * ns.z);
+                vec4 y_ = floor(j - 7.0 * x_);
+                vec4 x = x_ *ns.x + ns.yyyy;
+                vec4 y = y_ *ns.x + ns.yyyy;
+                vec4 h = 1.0 - abs(x) - abs(y);
+                vec4 b0 = vec4(x.xy, y.xy);
+                vec4 b1 = vec4(x.zw, y.zw);
+                vec4 s0 = floor(b0)*2.0 + 1.0;
+                vec4 s1 = floor(b1)*2.0 + 1.0;
+                vec4 sh = -step(h, vec4(0.0));
+                vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy;
+                vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww;
+                vec3 p0 = vec3(a0.xy, h.x);
+                vec3 p1 = vec3(a0.zw, h.y);
+                vec3 p2 = vec3(a1.xy, h.z);
+                vec3 p3 = vec3(a1.zw, h.w);
+                vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2,p2), dot(p3,p3)));
+                p0 *= norm.x;
+                p1 *= norm.y;
+                p2 *= norm.z;
+                p3 *= norm.w;
+                vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
+                m = m * m;
+                return 42.0 * dot(m*m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)));
             }
-            float noise (in vec2 st) {
-                vec2 i = floor(st);
-                vec2 f = fract(st);
-                float a = random(i);
-                float b = random(i + vec2(1.0, 0.0));
-                float c = random(i + vec2(0.0, 1.0));
-                float d = random(i + vec2(1.0, 1.0));
-                vec2 u = f * f * (3.0 - 2.0 * f);
-                return mix(a, b, u.x) + (c - a)* u.y * (1.0 - u.x) + (d - b) * u.x * u.y;
+
+            // Fractal Brownian Motion cho clouds chi tiết
+            float fbm(vec3 p) {
+                float value = 0.0;
+                float amplitude = 0.5;
+                float frequency = 1.0;
+                for(int i = 0; i < 6; i++) {
+                    value += amplitude * snoise(p * frequency);
+                    amplitude *= 0.5;
+                    frequency *= 2.0;
+                }
+                return value;
             }
 
             void main() {
-                float n = noise(vPosition.xy * 0.05 + time * 0.05);
-                n += noise(vPosition.yz * 0.1) * 0.5;
+                // Multi-layer depth effect
+                vec3 pos = vWorldPosition;
 
-                vec3 colorBottom = vec3(0.05, 0.0, 0.1);
-                vec3 colorTop = vec3(0.0, 0.05, 0.2);
-                vec3 nebulaColor = vec3(0.2, 0.0, 0.4);
+                // Layer 1 - Distant nebula clouds (slow, large)
+                float n1 = fbm(pos * 0.02 + time * 0.01);
 
-                vec3 finalColor = mix(colorBottom, colorTop, vUv.y + n * 0.2);
-                finalColor += nebulaColor * n * 0.4;
+                // Layer 2 - Mid-range clouds (medium speed)
+                float n2 = fbm(pos * 0.05 - time * 0.015 + 100.0);
+
+                // Layer 3 - Close clouds (faster, detailed)
+                float n3 = fbm(pos * 0.1 + time * 0.02 + 200.0);
+
+                // Kết hợp nhiều layer noise
+                float noise = (n1 * 0.5 + n2 * 0.3 + n3 * 0.2);
+
+                // 4-color gradient WARM - độ sáng cân bằng
+                vec3 colorDeepRose = vec3(0.18, 0.05, 0.1);      // Đỏ tím
+                vec3 colorRomanticPink = vec3(0.85, 0.35, 0.55);  // Hồng
+                vec3 colorWarmGold = vec3(1.0, 0.75, 0.45);       // Vàng ấm
+                vec3 colorSoftPurple = vec3(0.3, 0.12, 0.35);     // Tim
+
+                // Vertical gradient
+                vec3 baseColor = mix(colorDeepRose, colorSoftPurple, vUv.y);
+
+                // Thêm nebula clouds - moderate intensity
+                vec3 pinkClouds = colorRomanticPink * noise * 0.38;
+                vec3 goldHighlights = colorWarmGold * (noise + 0.5) * 0.14;
+
+                // Pulsing animation
+                float pulse = sin(time * 1.5) * 0.08 + 0.92;
+
+                // Radial gradient từ tâm
+                float distFromCenter = length(vUv - 0.5);
+                float radialGlow = 1.0 - smoothstep(0.0, 0.6, distFromCenter);
+
+                // Kết hợp tất cả
+                vec3 finalColor = baseColor * 1.05; // Slightly brighter base
+                finalColor += pinkClouds * pulse;
+                finalColor += goldHighlights * radialGlow * pulse;
+
+                // Warm color shift theo thời gian
+                float warmthShift = sin(time * 0.2) * 0.03;
+                finalColor.r += warmthShift * 0.1;
+                finalColor.g += warmthShift * 0.05;
+                finalColor.b *= (1.0 - warmthShift * 0.1);
 
                 gl_FragColor = vec4(finalColor, 1.0);
             }
         `;
 
-        const nebulaGeo = new THREE.SphereGeometry(100, 32, 32);
+        const nebulaGeo = new THREE.SphereGeometry(150, 32, 32);
         const nebulaMat = new THREE.ShaderMaterial({
             vertexShader: nebulaVertexShader,
             fragmentShader: nebulaFragmentShader,
@@ -637,52 +1072,132 @@
         const nebula = new THREE.Mesh(nebulaGeo, nebulaMat);
         scene.add(nebula);
 
-        // --- NGÔI SAO ---
+        // --- NGÔI SAO (ENHANCED - Realistic Twinkling & Temperature Colors) ---
         const starVertexShader = `
             attribute float size;
+            attribute float temperature;
+            attribute float twinkleOffset;
+            attribute float layerDepth;
             varying float vAlpha;
+            varying float vTemperature;
+            varying float vLayerDepth;
             uniform float time;
+
+            // Realistic twinkling với multi-frequency
+            float twinkle(float t, float offset) {
+                // Kết hợp nhiều frequency để tạo nhấp nháy tự nhiên
+                float slow = sin(t * 0.5 + offset) * 0.5 + 0.5;
+                float medium = sin(t * 2.3 + offset * 1.7) * 0.3 + 0.7;
+                float fast = sin(t * 5.0 + offset * 3.1) * 0.15 + 0.85;
+                return slow * medium * fast;
+            }
+
             void main() {
                 vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
                 gl_Position = projectionMatrix * mvPosition;
 
-                float twinkle = sin(time * 2.0 + position.x * 10.0) * 0.5 + 0.5;
-                gl_PointSize = size * (1.0 + twinkle * 0.5) * (300.0 / -mvPosition.z);
-                vAlpha = 0.5 + twinkle * 0.5;
+                // Twinkle effect với individual offset
+                float twinkleFactor = twinkle(time, twinkleOffset);
+
+                // Size varies với twinkle và depth (parallax effect)
+                float depthScale = 1.0 + layerDepth * 0.3;
+                gl_PointSize = size * twinkleFactor * depthScale * (300.0 / -mvPosition.z);
+
+                // Alpha varies với twinkle
+                vAlpha = 0.4 + twinkleFactor * 0.6;
+                vTemperature = temperature;
+                vLayerDepth = layerDepth;
             }
         `;
 
         const starFragmentShader = `
             varying float vAlpha;
+            varying float vTemperature;
+            varying float vLayerDepth;
+
+            // Star temperature colors (Kelvin -> RGB approximation)
+            vec3 temperatureToRGB(float temp) {
+                // Temp: 0.0 (cool/blue) -> 1.0 (warm/yellow)
+                vec3 coolBlue = vec3(0.6, 0.8, 1.0);
+                vec3 white = vec3(1.0, 1.0, 1.0);
+                vec3 warmYellow = vec3(1.0, 0.95, 0.7);
+                vec3 orangeRed = vec3(1.0, 0.7, 0.5);
+
+                vec3 color;
+                if (temp < 0.25) {
+                    color = mix(coolBlue, white, temp * 4.0);
+                } else if (temp < 0.5) {
+                    color = mix(white, warmYellow, (temp - 0.25) * 4.0);
+                } else {
+                    color = mix(warmYellow, orangeRed, (temp - 0.5) * 2.0);
+                }
+                return color;
+            }
+
             void main() {
                 vec2 coord = gl_PointCoord - vec2(0.5);
                 float dist = length(coord);
                 if(dist > 0.5) discard;
 
+                // Realistic star glow pattern
                 float strength = 1.0 - (dist * 2.0);
                 strength = pow(strength, 2.0);
 
-                gl_FragColor = vec4(1.0, 1.0, 1.0, vAlpha * strength);
+                // Core glow (bright center)
+                float core = 1.0 - smoothstep(0.0, 0.15, dist);
+                core = pow(core, 3.0);
+
+                // Outer glow (diffuse)
+                float glow = strength;
+
+                // Combine core and glow
+                float finalGlow = core * 1.5 + glow * 0.5;
+
+                // Get color from temperature
+                vec3 starColor = temperatureToRGB(vTemperature);
+
+                // Depth-based atmospheric scattering
+                float atmosphere = 1.0 - vLayerDepth * 0.2;
+
+                gl_FragColor = vec4(starColor * finalGlow * atmosphere, vAlpha * strength);
             }
         `;
 
         const starGeo = new THREE.BufferGeometry();
-        const starCount = 5000;
+        const starCount = 10000; // Increased for denser starfield
         const starPos = new Float32Array(starCount * 3);
         const starSizes = new Float32Array(starCount);
+        const starTemperatures = new Float32Array(starCount); // 0-1 for temperature
+        const starTwinkleOffsets = new Float32Array(starCount); // Unique offset for each star
+        const starLayerDepths = new Float32Array(starCount); // For parallax
 
         for(let i=0; i<starCount; i++) {
-            const x = (Math.random() - 0.5) * 200;
-            const y = (Math.random() - 0.5) * 200;
-            const z = (Math.random() - 0.5) * 200;
+            const x = (Math.random() - 0.5) * 350;
+            const y = (Math.random() - 0.5) * 350;
+            const z = (Math.random() - 0.5) * 350;
             starPos[i*3] = x;
             starPos[i*3+1] = y;
             starPos[i*3+2] = z;
-            starSizes[i] = Math.random() * 2.5;
+
+            // Size distribution: mostly small, some large
+            starSizes[i] = Math.random() < 0.9 ? Math.random() * 1.5 + 0.5 : Math.random() * 3 + 2;
+
+            // Temperature: realistic stellar class distribution
+            // More cool stars (blue/white) than warm (yellow/red)
+            const tempRand = Math.random();
+            starTemperatures[i] = tempRand < 0.6 ? Math.random() * 0.3 : Math.random() * 0.7 + 0.3;
+
+            starTwinkleOffsets[i] = Math.random() * 100;
+
+            // Layer depth for parallax (0 = far, 1 = near)
+            starLayerDepths[i] = Math.random();
         }
 
         starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
         starGeo.setAttribute('size', new THREE.BufferAttribute(starSizes, 1));
+        starGeo.setAttribute('temperature', new THREE.BufferAttribute(starTemperatures, 1));
+        starGeo.setAttribute('twinkleOffset', new THREE.BufferAttribute(starTwinkleOffsets, 1));
+        starGeo.setAttribute('layerDepth', new THREE.BufferAttribute(starLayerDepths, 1));
 
         const starMat = new THREE.ShaderMaterial({
             vertexShader: starVertexShader,
@@ -696,62 +1211,206 @@
         const starSystem = new THREE.Points(starGeo, starMat);
         scene.add(starSystem);
 
-        // --- CÂY THÔNG GIÁNG SINH (INSTANCED MESH - TỐIUU 7000+ PARTICLES) ---
+        // --- BẮN SAO (SHOOTING STARS) ---
+        const shootingStarCount = 3;
+        const shootingStars = [];
+
+        for (let i = 0; i < shootingStarCount; i++) {
+            // Create shooting star trail
+            const trailLength = 20;
+            const trailGeo = new THREE.BufferGeometry();
+            const trailPos = new Float32Array(trailLength * 3);
+            const trailOpacities = new Float32Array(trailLength);
+
+            for (let j = 0; j < trailLength; j++) {
+                trailPos[j * 3] = -j * 0.5;
+                trailPos[j * 3 + 1] = 0;
+                trailPos[j * 3 + 2] = 0;
+                trailOpacities[j] = 1.0 - (j / trailLength);
+            }
+
+            trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPos, 3));
+            trailGeo.setAttribute('opacity', new THREE.BufferAttribute(trailOpacities, 1));
+
+            const trailMat = new THREE.ShaderMaterial({
+                uniforms: { time: { value: 0 } },
+                vertexShader: `
+                    attribute float opacity;
+                    varying float vOpacity;
+                    void main() {
+                        vOpacity = opacity;
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                    }
+                `,
+                fragmentShader: `
+                    varying float vOpacity;
+                    void main() {
+                        gl_FragColor = vec4(1.0, 0.95, 0.8, vOpacity * 0.8);
+                    }
+                `,
+                transparent: true,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false
+            });
+
+            const trail = new THREE.Line(trailGeo, trailMat);
+
+            shootingStars.push({
+                mesh: trail,
+                active: false,
+                startTime: 0,
+                duration: 2 + Math.random() * 2,
+                start: new THREE.Vector3(),
+                end: new THREE.Vector3(),
+                speed: 30 + Math.random() * 20
+            });
+
+            scene.add(trail);
+        }
+
+        // --- CÂY THÔNG GIÁNG SINH (PINE TREE SHAPE - WARM ROMANTIC) ---
         const treeGroup = new THREE.Group();
         scene.add(treeGroup);
 
-        const treeParticleCount = 7000;
-        const colorBase = new THREE.Color(0x00aaff);
-        const colorTip = new THREE.Color(0xff00cc);
+        // Tạo glow texture cho particles
+        function createTreeGlowTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 32; canvas.height = 32;
+            const ctx = canvas.getContext('2d');
+            const cx = 16, cy = 16;
 
-        // Geometry đơn giản cho mỗi particle (cube nhỏ)
-        const particleGeometry = new THREE.BoxGeometry(0.06, 0.06, 0.06);
+            // Soft radial gradient cho glow effect
+            const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 14);
+            grad.addColorStop(0, 'rgba(255,255,255,1)');
+            grad.addColorStop(0.3, 'rgba(255,220,180,0.8)');
+            grad.addColorStop(0.7, 'rgba(255,180,150,0.3)');
+            grad.addColorStop(1, 'rgba(255,150,120,0)');
 
-        // Material cho instanced mesh
-        const treeMaterial = new THREE.MeshBasicMaterial({
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, 32, 32);
+
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        const treeParticleCount = 12000;
+
+        // Warm romantic colors cho tree
+        const treeColors = [
+            new THREE.Color(0x228b22), // Forest Green (base)
+            new THREE.Color(0x32cd32), // Lime Green
+            new THREE.Color(0xff69b4), // Hot Pink (ornaments)
+            new THREE.Color(0xffd700), // Gold (ornaments)
+            new THREE.Color(0xff4500), // Orange Red (warm accents)
+            new THREE.Color(0xff1493)  // Deep Pink
+        ];
+
+        // Plane geometry với glow texture
+        const treeParticleGeo = new THREE.PlaneGeometry(0.15, 0.15);
+        const treeParticleMat = new THREE.MeshBasicMaterial({
+            map: createTreeGlowTexture(),
             blending: THREE.AdditiveBlending,
             depthWrite: false,
             transparent: true,
-            opacity: 0.9
+            opacity: 0.9,
+            side: THREE.DoubleSide
         });
 
-        // Tạo InstancedMesh với 7000 instances
         const treeInstancedMesh = new THREE.InstancedMesh(
-            particleGeometry,
-            treeMaterial,
+            treeParticleGeo,
+            treeParticleMat,
             treeParticleCount
         );
 
-        // Lưu trữ vị trí và màu sắc ban đầu để animation
         const treeOriginalPositions = [];
-        const treeColors = new Float32Array(treeParticleCount * 3);
         const _dummy = new THREE.Object3D();
         const _color = new THREE.Color();
 
+        // Pine tree shape: multiple tiers/sections
+        function getTreeRadius(height, maxHeight) {
+            // Pine tree shape: wider at bottom, tapering gradually
+            const normalizedHeight = height / maxHeight; // 0 to 1
+
+            // Base radius - large at bottom
+            const baseRadius = 5.0;
+
+            // Tapering factor - exponential decay cho pine tree look
+            // Using multiple tiers
+            let radius;
+
+            if (normalizedHeight < 0.3) {
+                // Bottom tier - very wide
+                radius = baseRadius * (1 - normalizedHeight * 0.5);
+            } else if (normalizedHeight < 0.6) {
+                // Middle tier
+                radius = baseRadius * 0.7 * (1 - (normalizedHeight - 0.3) * 0.8);
+            } else if (normalizedHeight < 0.85) {
+                // Upper tier
+                radius = baseRadius * 0.4 * (1 - (normalizedHeight - 0.6) * 1.5);
+            } else {
+                // Top - narrow
+                radius = baseRadius * 0.15 * (1 - (normalizedHeight - 0.85) * 4);
+            }
+
+            return Math.max(0.1, radius);
+        }
+
         for (let i = 0; i < treeParticleCount; i++) {
             const t = i / treeParticleCount;
-            const h = t * 10;
 
-            const angle = i * 137.5 * (Math.PI / 180);
-            const angle2 = i * 86.3 * (Math.PI / 180);
+            // Height distribution - more particles at bottom
+            const hBias = 1 - Math.pow(t, 0.7); // Bias toward bottom
+            const h = hBias * 12; // Tree height: 12 units
 
-            const radius = 4 * Math.exp(-h/3.5) * (0.8 + 0.2 * Math.sin(t * 20));
+            // Golden angle cho natural spiral distribution
+            const angle = i * 137.508 * (Math.PI / 180);
 
-            const x = radius * Math.cos(angle) + (radius * 0.3 * Math.cos(angle2));
-            const z = radius * Math.sin(angle) + (radius * 0.3 * Math.sin(angle2));
-            const y = h - 2;
+            // Get radius based on pine tree shape
+            const radius = getTreeRadius(h, 12);
+
+            // Add some natural variation
+            const radiusVariation = 0.8 + Math.random() * 0.4;
+            const finalRadius = radius * radiusVariation;
+
+            // Spiral position
+            const x = finalRadius * Math.cos(angle);
+            const z = finalRadius * Math.sin(angle);
+            const y = h - 4; // Offset so tree sits on ground
 
             // Lưu vị trí gốc
-            treeOriginalPositions.push({ x, y, z, radius, angle, t });
+            treeOriginalPositions.push({ x, y, z, radius: finalRadius, angle, t, h });
 
-            // Set position cho instance
+            // Set position
             _dummy.position.set(x, y, z);
-            _dummy.scale.setScalar(1);
+
+            // Scale varies with height
+            const scaleVar = 0.6 + Math.random() * 0.8;
+            _dummy.scale.setScalar(scaleVar);
+
+            // Face outward from center
+            _dummy.lookAt(x * 2, y, z * 2);
+
             _dummy.updateMatrix();
             treeInstancedMesh.setMatrixAt(i, _dummy.matrix);
 
-            // Set màu sắc
-            _color.copy(colorBase).lerp(colorTip, t * t);
+            // Color distribution: mostly green, some ornaments
+            const ornamentChance = Math.random();
+            let colorIndex;
+
+            if (ornamentChance < 0.65) {
+                // Green needles (mix of shades)
+                colorIndex = Math.random() < 0.5 ? 0 : 1;
+            } else if (ornamentChance < 0.75) {
+                // Pink ornaments
+                colorIndex = Math.random() < 0.5 ? 2 : 5;
+            } else if (ornamentChance < 0.88) {
+                // Gold ornaments
+                colorIndex = 3;
+            } else {
+                // Orange-red accents
+                colorIndex = 4;
+            }
+
+            _color.copy(treeColors[colorIndex]);
             treeInstancedMesh.setColorAt(i, _color);
         }
 
@@ -759,10 +1418,36 @@
         treeInstancedMesh.instanceColor.needsUpdate = true;
         treeGroup.add(treeInstancedMesh);
 
-        // Đèn cây thông
-        const treeLight = new THREE.PointLight(0x00ffff, 3, 15);
-        treeLight.position.set(0, 3, 0);
+        // Ngôi sao trên đỉnh cây (Star topper)
+        const starTopperGeo = new THREE.OctahedronGeometry(0.4, 0);
+        const starTopperMat = new THREE.MeshBasicMaterial({
+            color: 0xffd700,
+            blending: THREE.AdditiveBlending
+        });
+        const starTopper = new THREE.Mesh(starTopperGeo, starTopperMat);
+        starTopper.position.set(0, 8.5, 0);
+        treeGroup.add(starTopper);
+
+        // Glow around star
+        const starGlowGeo = new THREE.SphereGeometry(0.8, 16, 16);
+        const starGlowMat = new THREE.MeshBasicMaterial({
+            color: 0xffd700,
+            transparent: true,
+            opacity: 0.3,
+            blending: THREE.AdditiveBlending
+        });
+        const starGlow = new THREE.Mesh(starGlowGeo, starGlowMat);
+        starGlow.position.set(0, 8.5, 0);
+        treeGroup.add(starGlow);
+
+        // Warm lights cho tree (thay vì cyan)
+        const treeLight = new THREE.PointLight(0xffaa00, 3, 20);
+        treeLight.position.set(0, 5, 0);
         scene.add(treeLight);
+
+        const treeLight2 = new THREE.PointLight(0xff69b4, 2, 15);
+        treeLight2.position.set(0, 3, 0);
+        scene.add(treeLight2);
 
         // --- VÕNG ẢNH QUAY ---
         const orbitRadius = 9;
@@ -888,52 +1573,101 @@
         heartShape.bezierCurveTo(x + 0.7, y, x + 0.5, y + 0.5, x + 0.5, y + 0.5);
 
         const heartGeo = new THREE.ShapeGeometry(heartShape);
+
+        // Tạo nhiều màu cho hearts - gradient từ hồng đến đỏ tím
+        const heartColors = [
+            new THREE.Color(0xff69b4), // Pink
+            new THREE.Color(0xff00cc), // Magenta
+            new THREE.Color(0xff0066), // Rose
+            new THREE.Color(0xff1493)  // Deep Pink
+        ];
+
+        const heartInstances = [];
         const heartMat = new THREE.MeshBasicMaterial({
-            color: 0xff0066, // Hồng đậm
+            color: 0xffffff,
             side: THREE.DoubleSide,
             transparent: true,
-            opacity: 0.6,
+            opacity: 0.7,
             blending: THREE.AdditiveBlending
         });
 
-        const heartCount = 50;
+        const heartCount = 100;
         const heartInstancedMesh = new THREE.InstancedMesh(heartGeo, heartMat, heartCount);
         const heartData = [];
         const _heartDummy = new THREE.Object3D();
 
         for(let i=0; i<heartCount; i++) {
-            const x = (Math.random() - 0.5) * 20; // Phạm vi hẹp hơn snow, quanh cây
-            const y = Math.random() * 20;
-            const z = (Math.random() - 0.5) * 20;
+            const x = (Math.random() - 0.5) * 25; // Mở rộng phạm vi
+            const y = Math.random() * 25;
+            const z = (Math.random() - 0.5) * 25;
             const scale = 0.1 + Math.random() * 0.15;
             const speed = 0.01 + Math.random() * 0.02;
-            
-            heartData.push({x, y, z, speed, scale});
-            
+            const colorIndex = Math.floor(Math.random() * heartColors.length);
+
+            heartData.push({x, y, z, speed, scale, colorIndex});
+            heartInstances.push({index: i, colorIndex});
+
             _heartDummy.position.set(x, y, z);
             _heartDummy.scale.setScalar(scale);
             _heartDummy.rotation.z = Math.PI; // Lật ngược tim lại cho đúng chiều
             _heartDummy.updateMatrix();
             heartInstancedMesh.setMatrixAt(i, _heartDummy.matrix);
+            heartInstancedMesh.setColorAt(i, heartColors[colorIndex]);
         }
+        heartInstancedMesh.instanceColor.needsUpdate = true;
         scene.add(heartInstancedMesh);
 
-        // --- TUYẾT VŨ TRỤ (INSTANCED MESH - TỐIUU 2000+ PARTICLES) ---
-        const snowCount = 2000;
+        // --- TUYẾT VŨ TRỤ (INSTANCED MESH - TỐIUU 3000+ PARTICLES) ---
+        const snowCount = 3000;
 
         // Dùng plane geometry cho flakes
-        const snowflakeGeometry = new THREE.PlaneGeometry(0.15, 0.15);
+        const snowflakeGeometry = new THREE.PlaneGeometry(0.18, 0.18);
 
+        // Texture chất lượng cao với pattern 6 cạnh như bông tuyết thật
         function createSnowTexture() {
             const canvas = document.createElement('canvas');
-            canvas.width = 32; canvas.height = 32;
+            canvas.width = 64; canvas.height = 64;
             const ctx = canvas.getContext('2d');
-            const grad = ctx.createRadialGradient(16,16,0,16,16,16);
+            const cx = 32, cy = 32;
+
+            // Gradient glow từ tâm
+            const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 28);
             grad.addColorStop(0, 'rgba(255,255,255,1)');
-            grad.addColorStop(0.4, 'rgba(255,255,255,0.8)');
+            grad.addColorStop(0.2, 'rgba(240,248,255,0.95)');
+            grad.addColorStop(0.5, 'rgba(200,220,255,0.7)');
             grad.addColorStop(1, 'rgba(255,255,255,0)');
+
+            // Vẽ pattern 6 cạnh của bông tuyết
+            ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+            ctx.lineWidth = 1.5;
+
+            // Vẽ 6 nhánh chính
+            for (let i = 0; i < 6; i++) {
+                const angle = (i * Math.PI) / 3;
+                const dx = Math.cos(angle) * 26;
+                const dy = Math.sin(angle) * 26;
+
+                ctx.beginPath();
+                ctx.moveTo(cx, cy);
+                ctx.lineTo(cx + dx, cy + dy);
+                ctx.stroke();
+
+                // Nhánh phụ
+                const subAngle = angle + Math.PI / 6;
+                const subDx = Math.cos(subAngle) * 16;
+                const subDy = Math.sin(subAngle) * 16;
+
+                ctx.beginPath();
+                ctx.moveTo(cx, cy);
+                ctx.lineTo(cx + subDx, cy + subDy);
+                ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+                ctx.stroke();
+            }
+
+            // Fill với gradient
             ctx.fillStyle = grad;
-            ctx.fillRect(0,0,32,32);
+            ctx.fillRect(0, 0, 64, 64);
+
             return new THREE.CanvasTexture(canvas);
         }
 
@@ -942,7 +1676,7 @@
             transparent: true,
             blending: THREE.AdditiveBlending,
             depthWrite: false,
-            opacity: 0.8,
+            opacity: 0.95,
             side: THREE.DoubleSide
         });
 
@@ -958,10 +1692,10 @@
         const _snowDummy = new THREE.Object3D();
 
         for (let i = 0; i < snowCount; i++) {
-            const x = (Math.random() - 0.5) * 40;
-            const y = Math.random() * 20;
-            const z = (Math.random() - 0.5) * 40;
-            const speed = 0.02 + Math.random() * 0.05;
+            const x = (Math.random() - 0.5) * 50;
+            const y = Math.random() * 25;
+            const z = (Math.random() - 0.5) * 50;
+            const speed = 0.01 + Math.random() * 0.03; // Chậm hơn để lãng mạn hơn
             const rotationSpeed = (Math.random() - 0.5) * 0.02;
 
             snowOriginalData.push({ x, y, z, speed, rotationSpeed });
@@ -1140,7 +1874,7 @@
             function animateCamera() {
                 progress++;
                 const t = progress / duration;
-                const easeT = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; // ease in-out
+                const easeT = Easing.easeInOutCubic(t); // Smooth cubic easing
 
                 camera.position.lerpVectors(startPos, cameraOffset, easeT);
                 controls.target.lerpVectors(startTarget, endTarget, easeT);
@@ -1212,7 +1946,7 @@
             function animateBack() {
                 progress++;
                 const t = progress / duration;
-                const easeT = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+                const easeT = Easing.easeInOutCubic(t);
 
                 camera.position.lerpVectors(startPos, endPos, easeT);
                 controls.target.lerpVectors(startTarget, endTarget, easeT);
@@ -1319,11 +2053,37 @@
             nebulaMat.uniforms.time.value = time * 0.2;
             starMat.uniforms.time.value = time;
 
+            // Update post-processing uniforms
+            chromaticAberrationPass.uniforms.time.value = time;
+            filmGrainPass.uniforms.time.value = time;
+
+            // Animate God Rays
+            godRays.forEach((ray, i) => {
+                ray.mesh.material.uniforms.time.value = time;
+                // Slight rotation for each ray
+                ray.mesh.rotation.y = ray.baseAngle + Math.sin(time * ray.speed + i) * 0.05;
+            });
+
+            // Animate Dust System
+            dustMat.uniforms.time.value = time;
+            dustSystem.rotation.y = time * 0.01;
+            dustSystem.rotation.x = Math.sin(time * 0.05) * 0.02;
+
             controls.update();
 
             // Animate InstancedMesh tree - xoay và breathing effect
-            treeGroup.rotation.y = time * 0.1;
-            
+            treeGroup.rotation.y = time * 0.15; // Xoay nhanh hơn chút
+
+            // Star topper animation - sparkle và rotate
+            if (starTopper && starGlow) {
+                starTopper.rotation.y = time * 0.5;
+                starTopper.rotation.z = time * 0.3;
+                // Pulsing scale
+                const starPulse = 1 + Math.sin(time * 2) * 0.1;
+                starTopper.scale.setScalar(starPulse);
+                starGlow.scale.setScalar(starPulse * 1.2);
+            }
+
             // Xử lý Flow Logic
             if (isFlowMode) {
                 if (flowState === 'expanding') {
@@ -1359,7 +2119,7 @@
             }
 
             // Breathing & Explosion Effect
-            const breathScale = 1 + Math.sin(time * 2) * 0.01;
+            const breathScale = 1 + Math.sin(time * 3) * 0.02; // Nhịp tim nhanh hơn, biên độ lớn hơn
             
             for (let i = 0; i < treeParticleCount; i++) {
                 const orig = treeOriginalPositions[i];
@@ -1466,10 +2226,10 @@
             for (let i = 0; i < heartCount; i++) {
                 const data = heartData[i];
                 data.y += data.speed; // Bay lên
-                if (data.y > 20) data.y = -5; // Reset khi bay cao quá
-                
+                if (data.y > 25) data.y = -5; // Reset khi bay cao quá
+
                 _heartDummy.position.set(data.x, data.y, data.z);
-                _heartDummy.scale.setScalar(data.scale * (1 + Math.sin(time * 3 + i) * 0.2)); // Tim đập nhẹ
+                _heartDummy.scale.setScalar(data.scale * (1 + Math.sin(time * 4 + i) * 0.25)); // Tim đập mạnh hơn
                 _heartDummy.rotation.z = Math.PI + Math.sin(time + i) * 0.2; // Lắc lư nhẹ
                 _heartDummy.rotation.y = time * 0.5 + i; // Xoay vòng
                 
@@ -1501,6 +2261,59 @@
 
             // Xoay nhẹ toàn bộ hệ thống snow
             snowInstancedMesh.rotation.y = time * 0.02;
+
+            // --- BẮN SAO ANIMATION ---
+            shootingStars.forEach((star, index) => {
+                // Random activation (about every 5-10 seconds per star)
+                if (!star.active && Math.random() < 0.002) {
+                    star.active = true;
+                    star.startTime = time;
+
+                    // Random start position
+                    const theta = Math.random() * Math.PI * 2;
+                    const phi = Math.random() * Math.PI * 0.5 + Math.PI * 0.25;
+                    const r = 80 + Math.random() * 40;
+
+                    star.start.set(
+                        r * Math.sin(phi) * Math.cos(theta),
+                        r * Math.cos(phi),
+                        r * Math.sin(phi) * Math.sin(theta)
+                    );
+
+                    // End position (downward diagonal)
+                    star.end.set(
+                        star.start.x - 20 - Math.random() * 20,
+                        star.start.y - 30 - Math.random() * 20,
+                        star.start.z - 20 - Math.random() * 20
+                    );
+                }
+
+                if (star.active) {
+                    const elapsed = time - star.startTime;
+                    const progress = elapsed / star.duration;
+
+                    if (progress >= 1) {
+                        star.active = false;
+                        star.mesh.visible = false;
+                    } else {
+                        star.mesh.visible = true;
+
+                        // Easing for natural movement
+                        const easedProgress = progress;
+                        const currentPos = new THREE.Vector3().lerpVectors(star.start, star.end, easedProgress);
+
+                        star.mesh.position.copy(currentPos);
+
+                        // Rotate to face direction of travel
+                        const direction = new THREE.Vector3().subVectors(star.end, star.start).normalize();
+                        star.mesh.lookAt(star.end);
+
+                        // Fade in/out at start/end
+                        const fadeInOut = Math.sin(progress * Math.PI);
+                        star.mesh.material.uniforms.time.value = fadeInOut;
+                    }
+                }
+            });
 
             composer.render();
         }
