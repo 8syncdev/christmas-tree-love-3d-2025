@@ -659,26 +659,26 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        renderer.toneMappingExposure = 1.2; // Giống gốc
+        renderer.toneMappingExposure = 1.0; // Trung tính, cân bằng
         document.getElementById('canvas-container').appendChild(renderer.domElement);
 
         // --- HỆ THỐNG POST PROCESSING (Giống gốc - ảnh có glow) ---
         const renderScene = new RenderPass(scene, camera);
-        // Bloom GIỐNG GỐC - ảnh sẽ phát sáng
+        // Bloom TINH CHỈNH - Glow mềm mại, lan tỏa (Cinematic)
         const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
-        bloomPass.threshold = 0.15; // Giống gốc
-        bloomPass.strength = 0.6;    // Giống gốc
-        bloomPass.radius = 0.5;      // Giống gốc
+        bloomPass.threshold = 0.25; // Lọc bớt ánh sáng yếu để ảnh không bị mờ
+        bloomPass.strength = 0.5;   // Đủ sáng để tạo hào quang
+        bloomPass.radius = 0.8;     // Tản sáng rộng ra -> Mềm mại, không chói gắt
 
         const composer = new EffectComposer(renderer);
         composer.addPass(renderScene);
         composer.addPass(bloomPass);
 
-        // --- CHROMATIC ABERRATION PASS (Rất nhẹ - không affect ảnh) ---
+        // --- CHROMATIC ABERRATION PASS (Tắt hẳn để tránh bị nhòe/phân thân) ---
         const ChromaticAberrationShader = {
             uniforms: {
                 'tDiffuse': { value: null },
-                'amount': { value: 0.0003 }, // Giảm 85% - gần như không thấy
+                'amount': { value: 0.0 }, // Tắt hiệu ứng phân thân
                 'time': { value: 0 }
             },
             vertexShader: `
@@ -718,8 +718,8 @@
             uniforms: {
                 'tDiffuse': { value: null },
                 'time': { value: 0 },
-                'grainIntensity': { value: 0.02 },
-                'vignetteIntensity': { value: 0.12 }
+                'grainIntensity': { value: 0.005 }, // Giảm grain xuống mức tối thiểu
+                'vignetteIntensity': { value: 0.15 } // Tăng vignette xíu để tập trung trung tâm
             },
             vertexShader: `
                 varying vec2 vUv;
@@ -757,8 +757,8 @@
                     color.rgb += grain;
                     color.rgb *= vignette;
 
-                    // Subtle warm color grading - không tăng brightness
-                    color.r += 0.01;
+                    // Subtle warm color grading - Đã tắt để ảnh trong trẻo, không bị ám vàng
+                    // color.r += 0.01;
 
                     gl_FragColor = color;
                 }
