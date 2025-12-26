@@ -1139,27 +1139,47 @@
                 float dist = length(coord);
                 if(dist > 0.5) discard;
 
-                // Realistic star glow pattern
-                float strength = 1.0 - (dist * 2.0);
-                strength = pow(strength, 2.0);
+                // Realistic star glow pattern with Diffraction Spikes (Hiệu ứng Lens Flare 4K)
+            float strength = 1.0 - (dist * 2.0);
+            strength = pow(strength, 2.0);
 
-                // Core glow (bright center)
-                float core = 1.0 - smoothstep(0.0, 0.15, dist);
-                core = pow(core, 3.0);
+            // Diffraction Spikes (Tạo hình ngôi sao 4 cánh lấp lánh)
+            float spikeLength = 0.5;
+            float spikeWidth = 0.05;
+            float spike = max(
+                1.0 - abs(coord.x / spikeWidth + coord.y * 0.0), // Vertical (relative to rotated UV)
+                1.0 - abs(coord.y / spikeWidth + coord.x * 0.0)  // Horizontal
+            );
+            // Rotate coordinates 45 degrees for X shape
+            float cos45 = 0.7071;
+            float sin45 = 0.7071;
+            vec2 rotatedCoord = vec2(
+                coord.x * cos45 - coord.y * sin45,
+                coord.x * sin45 + coord.y * cos45
+            );
+             float spikeX = max(
+                1.0 - abs(rotatedCoord.x / (spikeWidth * 0.5)),
+                1.0 - abs(rotatedCoord.y / (spikeWidth * 0.5))
+            );
+            
+            // Chỉ hiện tia sáng cho các ngôi sao lớn hoặc sáng
+            float spikeFactor = smoothstep(0.0, 0.1, max(spike, spikeX) * (1.0 - dist * 2.0));
+            
+            // Core glow (bright center)
+            float core = 1.0 - smoothstep(0.0, 0.15, dist);
+            core = pow(core, 3.0);
 
-                // Outer glow (diffuse)
-                float glow = strength;
+            // Combine core, glow and spikes
+            // Spikes chỉ hiện rõ ở sao sáng
+            float finalGlow = core * 2.0 + strength * 0.8 + spikeFactor * vAlpha * 1.5;
 
-                // Combine core and glow
-                float finalGlow = core * 1.5 + glow * 0.5;
+            // Get color from temperature
+            vec3 starColor = temperatureToRGB(vTemperature);
 
-                // Get color from temperature
-                vec3 starColor = temperatureToRGB(vTemperature);
+            // Depth-based atmospheric scattering
+            float atmosphere = 1.0 - vLayerDepth * 0.2;
 
-                // Depth-based atmospheric scattering
-                float atmosphere = 1.0 - vLayerDepth * 0.2;
-
-                gl_FragColor = vec4(starColor * finalGlow * atmosphere, vAlpha * strength);
+            gl_FragColor = vec4(starColor * finalGlow * atmosphere, vAlpha * strength);
             }
         `;
 
@@ -1244,8 +1264,16 @@
                 `,
                 fragmentShader: `
                     varying float vOpacity;
+                    uniform float time;
                     void main() {
-                        gl_FragColor = vec4(1.0, 0.95, 0.8, vOpacity * 0.8);
+                        // Gradient color: Gold head -> Pink tail
+                        vec3 headColor = vec3(1.0, 0.9, 0.5); // Gold
+                        vec3 tailColor = vec3(1.0, 0.4, 0.7); // Pink
+                        
+                        vec3 finalColor = mix(tailColor, headColor, vOpacity);
+                        
+                        // Add glow intensity
+                        gl_FragColor = vec4(finalColor * 2.0, vOpacity * 0.8);
                     }
                 `,
                 transparent: true,
@@ -1376,8 +1404,8 @@
             const z = finalRadius * Math.sin(angle);
             const y = h - 4; // Offset so tree sits on ground
 
-            // Lưu vị trí gốc
-            treeOriginalPositions.push({ x, y, z, radius: finalRadius, angle, t, h });
+            // Lưu vị trí gốc và colorIndex (sẽ cập nhật sau)
+            treeOriginalPositions.push({ x, y, z, radius: finalRadius, angle, t, h, colorIndex: 0 }); // Placeholder colorIndex
 
             // Set position
             _dummy.position.set(x, y, z);
@@ -1409,6 +1437,9 @@
                 // Orange-red accents
                 colorIndex = 4;
             }
+
+            // Save colorIndex for animation
+            treeOriginalPositions[i].colorIndex = colorIndex;
 
             _color.copy(treeColors[colorIndex]);
             treeInstancedMesh.setColorAt(i, _color);
@@ -2157,8 +2188,36 @@
                 
                 _dummy.updateMatrix();
                 treeInstancedMesh.setMatrixAt(i, _dummy.matrix);
+
+                // --- ENERGY PULSE ANIMATION ---
+                // Chỉ chạy khi không ở chế độ Flow (hoặc chạy cả 2 nếu muốn)
+                // Pulse chạy từ dưới lên trên theo trục Y gốc
+                const pulseSpeed = 3.0;
+                const pulseHeight = 15.0;
+                const pulsePos = (time * pulseSpeed) % pulseHeight;
+                
+                const distToPulse = Math.abs(orig.y - pulsePos);
+                
+                // Lấy màu gốc
+                _color.copy(treeColors[orig.colorIndex]);
+                
+                if (distToPulse < 2.0) {
+                    // Cường độ pulse (mạnh nhất ở tâm)
+                    let strength = (2.0 - distToPulse) / 2.0;
+                    strength = Math.pow(strength, 3.0); // Làm gọn pulse
+                    
+                    if (strength > 0.05) {
+                        // Cộng màu trắng/cyan vào để tạo hiệu ứng phát sáng
+                        _color.r += strength * 0.8;
+                        _color.g += strength * 0.8;
+                        _color.b += strength * 1.0;
+                    }
+                }
+                
+                treeInstancedMesh.setColorAt(i, _color);
             }
             treeInstancedMesh.instanceMatrix.needsUpdate = true;
+            treeInstancedMesh.instanceColor.needsUpdate = true;
 
             // Xử lý vị trí Photos & Camera
             if (flowProgress > 0) {
