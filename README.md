@@ -21,9 +21,10 @@ Dự án sử dụng **Three.js** và **ES Modules**, vì vậy bạn cần ch�
 ### 1. Chuẩn Bị Ảnh
 1.  Copy các bức ảnh kỷ niệm của bạn vào thư mục `images/`.
 2.  Hỗ trợ các định dạng: `.jpg`, `.png`, `.jpeg`.
-3.  **Quan trọng:** Chạy script để nén ảnh vào file dữ liệu (giúp load nhanh và tránh lỗi CORS):
-    *   **Windows:** Click chuột phải vào file `convert_images.ps1` -> Chọn **Run with PowerShell**.
-    *   Script sẽ tự động tạo/cập nhật file `embedded_images.js`.
+3.  **Quan trọng:** Chạy script để cập nhật danh sách ảnh vào ứng dụng:
+    *   **Windows:** Click chuột phải vào file `generate_manifest.ps1` -> Chọn **Run with PowerShell**.
+    *   Script sẽ tự động quét thư mục `images/` và cập nhật file `js/image_manifest.js`.
+    *   **Lưu ý:** Nếu bạn thêm ảnh mới, bạn *bắt buộc* phải chạy lại script này và refresh trình duyệt.
 
 ### 2. Chạy Dự Án (Chọn 1 trong các cách sau)
 
